@@ -1,0 +1,2525 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InternLog TH - ระบบบันทึกการปฏิบัติงานนักศึกษาฝึกงาน</title>
+
+  <!-- Google Fonts: Sarabun & Prompt สำหรับภาษาไทยและแบบฟอร์มราชการ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- html2canvas & jsPDF สำหรับ Export เป็นไฟล์ PDF และรูปภาพ PNG -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Sarabun', 'sans-serif'],
+            display: ['Prompt', 'Sarabun', 'sans-serif'],
+            sarabun: ['Sarabun', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* การตั้งค่าพื้นฐาน */
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, .font-heading {
+      font-family: 'Prompt', 'Sarabun', sans-serif;
+    }
+
+    /* =====================================================================
+       สไตล์เฉพาะสำหรับแบบฟอร์ม "ตารางการปฏิบัติงาน" ขนาด A4 (เหมือนเอกสารต้นฉบับ)
+       ===================================================================== */
+    .a4-preview-wrapper {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .a4-scaler {
+      position: relative;
+      transform-origin: top center;
+      transition: transform 0.2s ease;
+    }
+
+    .a4-sheet {
+      width: 210mm;
+      min-height: 297mm;
+      height: 297mm;
+      background: #ffffff;
+      color: #000000;
+      font-family: 'Sarabun', sans-serif;
+      padding: 14mm 14mm 12mm 14mm;
+      box-sizing: border-box;
+      box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.15), 0 0 1px rgba(15, 23, 42, 0.2);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .official-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1.5px solid #000000;
+      table-layout: fixed;
+    }
+
+    .official-table th,
+    .official-table td {
+      border: 1px solid #000000;
+      color: #000000;
+      font-family: 'Sarabun', sans-serif;
+      vertical-align: middle;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .official-table .title-cell {
+      font-size: 16.5pt;
+      font-weight: 700;
+      text-align: center;
+      padding: 6px 8px;
+      letter-spacing: 0.2px;
+    }
+
+    .official-table .info-cell {
+      font-size: 12.5pt;
+      padding: 5px 10px;
+      text-align: left;
+    }
+
+    .official-table .col-header {
+      font-size: 12pt;
+      font-weight: 700;
+      text-align: center;
+      padding: 6px 4px;
+      background-color: #ffffff;
+    }
+
+    .official-table .data-cell {
+      font-size: 12pt;
+      padding: 6px 8px;
+    }
+
+    .official-table .task-cell {
+      vertical-align: top;
+      text-align: left;
+      padding: 6px 10px;
+      line-height: 1.38;
+      white-space: pre-line;
+    }
+
+    /* กล่องสี่เหลี่ยมติ๊กถูกในช่อง สำเร็จ / ไม่สำเร็จ */
+    .form-checkbox-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 13px;
+      height: 13px;
+      border: 1.2px solid #000000;
+      margin-right: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      vertical-align: -1px;
+      box-sizing: border-box;
+    }
+
+    /* ส่วนท้ายหมายเหตุเส้นประเหมือนต้นฉบับ */
+    .note-footer {
+      margin-top: 12px;
+      display: flex;
+      align-items: flex-end;
+      font-size: 12.5pt;
+      color: #000000;
+      width: 100%;
+    }
+
+    .note-label {
+      font-weight: 600;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+
+    .note-dotted-line {
+      flex: 1;
+      border-bottom: 1.5px dotted #000000;
+      min-height: 22px;
+      padding: 0 8px 2px 8px;
+      font-size: 12.5pt;
+      line-height: 1.2;
+    }
+
+    /* สไตล์สำหรับการสั่งพิมพ์ (Print / Save as PDF) */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      body {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      /* ซ่อนส่วนติดต่อผู้ใช้ทั้งหมด ยกเว้นพื้นที่พิมพ์ */
+      body * {
+        visibility: hidden;
+      }
+
+      #print-area,
+      #print-area * {
+        visibility: visible;
+      }
+
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 210mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+      }
+
+      .a4-scaler {
+        transform: none !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .a4-scaler:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      .a4-sheet {
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        min-height: 297mm !important;
+      }
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-brand-100 selection:text-brand-800">
+
+  <!-- =====================================================================
+       TOAST NOTIFICATION CONTAINER (แจ้งเตือนมุมบนขวา)
+       ===================================================================== -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- =====================================================================
+       GLOBAL LOADING OVERLAY
+       ===================================================================== -->
+  <div id="global-loader" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden items-center justify-center">
+    <div class="bg-white rounded-2xl p-6 shadow-xl flex flex-col items-center gap-3 max-w-xs mx-4">
+      <div class="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+      <p id="loader-text" class="text-sm font-medium text-slate-700 text-center">กำลังประมวลผล...</p>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       1. หน้าเข้าสู่ระบบ & สมัครสมาชิก (AUTH SCREEN)
+       ===================================================================== -->
+  <div id="auth-screen" class="min-h-screen flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50 via-indigo-50/60 to-blue-100/70">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+      <div class="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-700 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-brand-500/30 mb-4">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">InternLog TH</h1>
+      <p class="mt-1.5 text-sm text-slate-600">ระบบบันทึกการปฏิบัติงานนักศึกษาฝึกงาน &amp; ออกแบบฟอร์ม A4</p>
+    </div>
+
+    <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-xl">
+      <div class="bg-white py-7 px-5 sm:px-9 shadow-xl shadow-slate-200/70 rounded-3xl border border-slate-100">
+        <!-- แถบสลับโหมด Login / Register -->
+        <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-xl mb-6">
+          <button type="button" id="tab-login-btn" onclick="switchAuthTab('login')"
+            class="py-2.5 text-sm font-semibold rounded-lg transition-all bg-white text-brand-700 shadow-xs">
+            เข้าสู่ระบบ
+          </button>
+          <button type="button" id="tab-register-btn" onclick="switchAuthTab('register')"
+            class="py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+            สมัครสมาชิกใหม่
+          </button>
+        </div>
+
+        <!-- ฟอร์มเข้าสู่ระบบ (LOGIN FORM) -->
+        <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+          <div>
+            <label for="login-email" class="block text-sm font-medium text-slate-700 mb-1">อีเมล (Email)</label>
+            <input id="login-email" type="email" required placeholder="student@gmail.com"
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm" />
+          </div>
+
+          <div>
+            <label for="login-password" class="block text-sm font-medium text-slate-700 mb-1">รหัสผ่าน (Password)</label>
+            <div class="relative">
+              <input id="login-password" type="password" required placeholder="••••••••"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm pr-11" />
+              <button type="button" onclick="togglePasswordVisibility('login-password')"
+                class="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-slate-600" title="แสดง/ซ่อนรหัสผ่าน">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit"
+            class="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md shadow-brand-600/20 transition transform active:scale-[0.99] text-sm">
+            เข้าสู่ระบบ
+          </button>
+        </form>
+
+        <!-- ฟอร์มสมัครสมาชิก (REGISTER FORM) -->
+        <form id="register-form" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="sm:col-span-2">
+              <label for="reg-fullname" class="block text-sm font-medium text-slate-700 mb-1">ชื่อ - นามสกุล <span class="text-rose-500">*</span></label>
+              <input id="reg-fullname" type="text" required placeholder="เช่น นายสมชาย ใจดี"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm" />
+            </div>
+
+            <div>
+              <label for="reg-studentid" class="block text-sm font-medium text-slate-700 mb-1">รหัสนักศึกษา <span class="text-rose-500">*</span></label>
+              <input id="reg-studentid" type="text" required placeholder="เช่น 68113085"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm" />
+            </div>
+
+            <div>
+              <label for="reg-targethours" class="block text-sm font-medium text-slate-700 mb-1">เป้าหมายชั่วโมงฝึกงาน <span class="text-rose-500">*</span></label>
+              <input id="reg-targethours" type="number" required min="1" max="2000" value="560"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm" />
+            </div>
+
+            <div>
+              <label for="reg-faculty" class="block text-sm font-medium text-slate-700 mb-1">คณะ <span class="text-rose-500">*</span></label>
+              <input id="reg-faculty" type="text" required placeholder="เช่น คณะบริหารธุรกิจ"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm" />
+            </div>
+
+            <div>
+              <label for="reg-major" class="block text-sm font-medium text-slate-700 mb-1">สาขาวิชา <span class="text-rose-500">*</span></label>
+              <input id="reg-major" type="text" required placeholder="เช่น การบัญชี"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm" />
+            </div>
+
+            <div class="sm:col-span-2">
+              <label for="reg-department" class="block text-sm font-medium text-slate-700 mb-1">แผนกที่ฝึกงาน <span class="text-rose-500">*</span></label>
+              <input id="reg-department" type="text" required placeholder="เช่น แผนกบัญชีและการเงิน"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm" />
+            </div>
+
+            <div>
+              <label for="reg-email" class="block text-sm font-medium text-slate-700 mb-1">อีเมล (Email) <span class="text-rose-500">*</span></label>
+              <input id="reg-email" type="email" required placeholder="student@gmail.com"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm" />
+            </div>
+
+            <div>
+              <label for="reg-password" class="block text-sm font-medium text-slate-700 mb-1">รหัสผ่าน (6 ตัวขึ้นไป) <span class="text-rose-500">*</span></label>
+              <input id="reg-password" type="password" required minlength="6" placeholder="อย่างน้อย 6 ตัวอักษร"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm" />
+            </div>
+          </div>
+
+          <button type="submit"
+            class="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md shadow-brand-600/20 transition transform active:scale-[0.99] text-sm mt-2">
+            สมัครสมาชิกและเริ่มบันทึกงาน
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       2. พื้นที่แอปพลิเคชันหลัก (MAIN APP SHELL - DASHBOARD / LOGS / EXPORT / PROFILE)
+       ===================================================================== -->
+  <div id="app-shell" class="hidden min-h-screen flex flex-col lg:flex-row">
+
+    <!-- DESKTOP SIDEBAR (แสดงเฉพาะหน้าจอ lg ขึ้นไป) -->
+    <aside class="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:inset-y-0 bg-white border-r border-slate-200 z-30">
+      <!-- Brand Header -->
+      <div class="flex items-center gap-3 px-6 h-18 py-5 border-b border-slate-100">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 to-blue-500 text-white flex items-center justify-center shadow-sm">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <span class="font-heading font-bold text-lg text-slate-900 block leading-none">InternLog TH</span>
+          <span class="text-xs text-slate-500 mt-1 block">สมุดบันทึกการฝึกงาน</span>
+        </div>
+      </div>
+
+      <!-- Student Quick Badge -->
+      <div class="px-4 py-4">
+        <div class="p-3.5 rounded-2xl bg-gradient-to-br from-brand-50 to-blue-50/70 border border-brand-100">
+          <div class="flex items-center gap-3">
+            <div id="sidebar-avatar" class="w-10 h-10 rounded-xl bg-brand-600 text-white font-bold flex items-center justify-center shrink-0 text-sm">
+              นศ
+            </div>
+            <div class="min-w-0 flex-1">
+              <p id="sidebar-name" class="text-sm font-bold text-slate-900 truncate">กำลังโหลด...</p>
+              <p id="sidebar-studentid" class="text-xs text-brand-700 font-medium truncate">รหัส: -</p>
+            </div>
+          </div>
+          <div class="mt-2.5 pt-2.5 border-t border-brand-100/80 flex items-center justify-between gap-2 text-xs text-slate-600">
+            <span id="sidebar-dept" class="truncate">แผนก: -</span>
+            <span id="connection-mode-badge" class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">Firebase Cloud</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Add CTA -->
+      <div class="px-4 mb-3">
+        <button type="button" onclick="openLogModal()"
+          class="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-sm shadow-brand-600/20 transition flex items-center justify-center gap-2 text-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          เพิ่มบันทึกปฏิบัติงาน
+        </button>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="flex-1 px-4 space-y-1.5 overflow-y-auto">
+        <button type="button" data-nav="dashboard" onclick="navigateTo('dashboard')"
+          class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-slate-600 hover:bg-slate-50">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          แดชบอร์ดสรุปผล
+        </button>
+
+        <button type="button" data-nav="logs" onclick="navigateTo('logs')"
+          class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-slate-600 hover:bg-slate-50">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          บันทึกการปฏิบัติงานรายวัน
+        </button>
+
+        <button type="button" data-nav="export" onclick="navigateTo('export')"
+          class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-slate-600 hover:bg-slate-50">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          Export ตาราง A4 / พิมพ์
+        </button>
+
+        <button type="button" data-nav="profile" onclick="navigateTo('profile')"
+          class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-slate-600 hover:bg-slate-50">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          ข้อมูลส่วนตัวนักศึกษา
+        </button>
+      </nav>
+
+      <!-- Logout Button -->
+      <div class="p-4 border-t border-slate-100">
+        <button type="button" onclick="handleLogout()"
+          class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          ออกจากระบบ
+        </button>
+      </div>
+    </aside>
+
+    <!-- MOBILE TOP HEADER -->
+    <header class="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-700 to-blue-500 text-white flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <span class="font-heading font-bold text-base text-slate-900 block leading-none">InternLog TH</span>
+          <span id="mobile-header-sub" class="text-[11px] text-slate-500 block mt-0.5 truncate max-w-[160px]">ระบบบันทึกการฝึกงาน</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="openLogModal()"
+          class="px-3 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-xs">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          เพิ่มบันทึก
+        </button>
+        <button type="button" onclick="handleLogout()" title="ออกจากระบบ"
+          class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 lg:pl-72 pb-24 lg:pb-10">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        <!-- แถบแจ้งเตือนกรณี Firestore Rules ยังไม่เปิดสิทธิ์ -->
+        <div id="firestore-warning-banner" class="hidden mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start justify-between gap-3">
+          <div class="space-y-1">
+            <p class="font-bold">⚠️ ไม่สามารถอ่าน/เขียนฐานข้อมูล Cloud Firestore ได้ (Missing or insufficient permissions)</p>
+            <p class="text-amber-800">กรุณาไปที่ Firebase Console &gt; Firestore Database &gt; Rules แล้วตั้งค่าอนุญาตให้ผู้ใช้ที่เข้าสู่ระบบเข้าถึงข้อมูลได้</p>
+          </div>
+          <button type="button" onclick="document.getElementById('firestore-warning-banner').classList.add('hidden')" class="text-amber-700 hover:text-amber-950 font-bold px-2 py-1">✕</button>
+        </div>
+
+        <!-- ===============================================================
+             VIEW A: แดชบอร์ดสรุปผลการฝึกงาน (DASHBOARD VIEW)
+             =============================================================== -->
+        <section id="view-dashboard" class="space-y-6">
+          <!-- Header & Quick Actions -->
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-slate-900">แดชบอร์ดสรุปผลการฝึกงาน</h2>
+              <p class="text-sm text-slate-500 mt-0.5">ภาพรวมชั่วโมงปฏิบัติงาน ความคืบหน้า และรายการล่าสุดของคุณ</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button type="button" onclick="openLogModal()"
+                class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-sm transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                บันทึกงานวันนี้
+              </button>
+              <button type="button" onclick="navigateTo('export')"
+                class="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-sm font-semibold rounded-xl shadow-2xs transition flex items-center gap-2">
+                <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Export ตาราง A4
+              </button>
+            </div>
+          </div>
+
+          <!-- การ์ดข้อมูลนักศึกษาปัจจุบัน -->
+          <div class="bg-gradient-to-r from-brand-700 via-brand-600 to-blue-600 rounded-3xl p-5 sm:p-6 text-white shadow-lg shadow-brand-600/15">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div class="space-y-1.5">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-xs font-medium backdrop-blur-xs">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  ข้อมูลนักศึกษาฝึกงาน
+                </div>
+                <h3 id="dash-student-name" class="text-xl sm:text-2xl font-bold tracking-tight">-</h3>
+                <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs sm:text-sm text-indigo-100 pt-1">
+                  <span>รหัสนักศึกษา: <strong id="dash-student-id" class="text-white font-semibold">-</strong></span>
+                  <span>คณะ: <strong id="dash-faculty" class="text-white font-semibold">-</strong></span>
+                  <span>สาขา: <strong id="dash-major" class="text-white font-semibold">-</strong></span>
+                  <span>แผนกที่ฝึกงาน: <strong id="dash-dept" class="text-white font-semibold">-</strong></span>
+                </div>
+              </div>
+              <button type="button" onclick="navigateTo('profile')"
+                class="self-start md:self-center px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold backdrop-blur-xs transition shrink-0">
+                แก้ไขข้อมูลส่วนตัว
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 KPI Stats Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <!-- Card 1: จำนวนวันที่ปฏิบัติงาน -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-500">วันที่ปฏิบัติงานแล้ว</span>
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="mt-3 flex items-baseline gap-2">
+                <span id="stat-total-days" class="text-3xl font-bold text-slate-900">0</span>
+                <span class="text-sm text-slate-500 font-medium">วัน</span>
+              </div>
+              <p class="mt-1.5 text-xs text-slate-400">นับจากจำนวนวันที่บันทึกในระบบ</p>
+            </div>
+
+            <!-- Card 2: ชั่วโมงสะสม & Progress Bar -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs sm:col-span-2 xl:col-span-1">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-500">ชั่วโมงฝึกงานสะสม</span>
+                <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="mt-3 flex items-baseline gap-2">
+                <span id="stat-total-hours" class="text-3xl font-bold text-slate-900">0</span>
+                <span class="text-sm text-slate-500 font-medium">/ <span id="stat-target-hours">320</span> ชม.</span>
+              </div>
+              <div class="mt-2.5">
+                <div class="flex justify-between text-xs mb-1">
+                  <span id="stat-progress-percent" class="font-semibold text-brand-600">0%</span>
+                  <span id="stat-remaining-hours" class="text-slate-400">เหลืออีก 320 ชม.</span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div id="stat-progress-bar" class="h-full bg-gradient-to-r from-brand-600 to-blue-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 3: งานที่ปฏิบัติสำเร็จ -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-500">งานที่ปฏิบัติสำเร็จ</span>
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="mt-3 flex items-baseline gap-2">
+                <span id="stat-completed-count" class="text-3xl font-bold text-emerald-600">0</span>
+                <span class="text-sm text-slate-500 font-medium">รายการ</span>
+              </div>
+              <p id="stat-success-rate" class="mt-1.5 text-xs text-slate-400">คิดเป็น 0% ของงานทั้งหมด</p>
+            </div>
+
+            <!-- Card 4: ไม่สำเร็จ / รอประเมิน -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-500">ไม่สำเร็จ / ยังไม่ระบุ</span>
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="mt-3 flex items-baseline gap-2">
+                <span id="stat-incomplete-count" class="text-3xl font-bold text-slate-900">0</span>
+                <span class="text-sm text-slate-500 font-medium">รายการ</span>
+              </div>
+              <p id="stat-status-breakdown" class="mt-1.5 text-xs text-slate-400">ไม่สำเร็จ 0 • ยังไม่ระบุ 0</p>
+            </div>
+          </div>
+
+          <!-- Chart & Recent Logs Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- กราฟสรุปชั่วโมงฝึกงาน -->
+            <div class="lg:col-span-7 bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+                <div>
+                  <h3 class="text-base font-bold text-slate-900">กราฟสรุปชั่วโมงฝึกงาน</h3>
+                  <p class="text-xs text-slate-500">แสดงชั่วโมงการปฏิบัติงานแยกตามวันหรือสัปดาห์</p>
+                </div>
+                <div class="inline-flex rounded-xl bg-slate-100 p-1 self-start">
+                  <button type="button" id="chart-mode-daily" onclick="setChartMode('daily')"
+                    class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-brand-700 shadow-2xs transition">
+                    รายวัน (ล่าสุด)
+                  </button>
+                  <button type="button" id="chart-mode-weekly" onclick="setChartMode('weekly')"
+                    class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">
+                    รายสัปดาห์
+                  </button>
+                </div>
+              </div>
+              <div id="hours-chart-container" class="flex-1 min-h-[220px] flex items-end justify-center">
+                <!-- วาดกราฟแท่งด้วย JS -->
+              </div>
+            </div>
+
+            <!-- รายการบันทึกการปฏิบัติงานล่าสุด -->
+            <div class="lg:col-span-5 bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="text-base font-bold text-slate-900">บันทึกการปฏิบัติงานล่าสุด</h3>
+                  <p class="text-xs text-slate-500">5 รายการล่าสุดที่บันทึก</p>
+                </div>
+                <button type="button" onclick="navigateTo('logs')" class="text-xs font-semibold text-brand-600 hover:text-brand-700">
+                  ดูทั้งหมด →
+                </button>
+              </div>
+              <div id="recent-logs-list" class="space-y-3 flex-1">
+                <!-- แสดงรายการล่าสุดด้วย JS -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW B: ระบบบันทึกการปฏิบัติงานรายวัน (DAILY WORK LOGS - CRUD)
+             =============================================================== -->
+        <section id="view-logs" class="hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-slate-900">บันทึกการปฏิบัติงานรายวัน</h2>
+              <p class="text-sm text-slate-500 mt-0.5">จัดการรายละเอียดงานประจำวัน ชั่วโมงปฏิบัติงาน และสถานะความสำเร็จ</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button type="button" id="btn-seed-sample" onclick="seedSampleData()"
+                class="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                โหลดตัวอย่าง 8 วัน (ตามแบบฟอร์ม)
+              </button>
+              <button type="button" onclick="openLogModal()"
+                class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                เพิ่มบันทึกใหม่
+              </button>
+            </div>
+          </div>
+
+          <!-- แถบค้นหาและตัวกรอง (Search & Filter Bar) -->
+          <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+              <div class="lg:col-span-4 relative">
+                <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input id="filter-search" type="text" oninput="renderLogsList()" placeholder="ค้นหางานหรือกิจกรรม..."
+                  class="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none" />
+              </div>
+
+              <div class="lg:col-span-2">
+                <select id="filter-status" onchange="renderLogsList()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none bg-white">
+                  <option value="all">สถานะ: ทั้งหมด</option>
+                  <option value="completed">สำเร็จ</option>
+                  <option value="incomplete">ไม่สำเร็จ</option>
+                  <option value="unspecified">ยังไม่ระบุ</option>
+                </select>
+              </div>
+
+              <div class="lg:col-span-2">
+                <input id="filter-date-start" type="date" onchange="renderLogsList()" title="ตั้งแต่วันที่"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none" />
+              </div>
+
+              <div class="lg:col-span-2">
+                <input id="filter-date-end" type="date" onchange="renderLogsList()" title="ถึงวันที่"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none" />
+              </div>
+
+              <div class="lg:col-span-2 flex gap-2">
+                <button type="button" onclick="resetLogFilters()"
+                  class="w-full px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+                  ล้างตัวกรอง
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ตารางแสดงรายการบันทึกทั้งหมด -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+              <span id="logs-count-badge" class="text-xs font-semibold text-slate-600">แสดง 0 รายการ</span>
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span>เรียงลำดับ:</span>
+                <select id="sort-logs-order" onchange="renderLogsList()" class="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 outline-none">
+                  <option value="asc">วันที่เก่า → ใหม่ (ตามลำดับฟอร์ม)</option>
+                  <option value="desc">วันที่ใหม่ → เก่า</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Desktop Table -->
+            <div class="hidden md:block overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold text-slate-600 uppercase">
+                    <th class="py-3.5 px-4 text-center w-16">ลำดับ</th>
+                    <th class="py-3.5 px-4 w-32">วัน/เดือน/ปี</th>
+                    <th class="py-3.5 px-4">งานหรือกิจกรรมที่ได้รับมอบหมาย</th>
+                    <th class="py-3.5 px-4 text-center w-24">ชั่วโมง</th>
+                    <th class="py-3.5 px-4 text-center w-36">สถานะงาน</th>
+                    <th class="py-3.5 px-4 text-right w-28">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-table-body" class="divide-y divide-slate-100 text-sm">
+                  <!-- Render rows via JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Mobile Card List -->
+            <div id="logs-mobile-list" class="md:hidden divide-y divide-slate-100">
+              <!-- Render cards via JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="logs-empty-state" class="hidden py-14 px-4 text-center">
+              <div class="mx-auto w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h4 class="text-base font-bold text-slate-800">ยังไม่มีบันทึกการปฏิบัติงาน</h4>
+              <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">เริ่มต้นเพิ่มบันทึกการปฏิบัติงานรายวันของคุณ หรือกดปุ่มโหลดตัวอย่าง 8 วันเพื่อทดสอบระบบ</p>
+              <div class="mt-4 flex flex-wrap justify-center gap-2.5">
+                <button type="button" onclick="openLogModal()" class="px-4 py-2 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition">
+                  + เพิ่มบันทึกวันแรก
+                </button>
+                <button type="button" onclick="seedSampleData()" class="px-4 py-2 bg-amber-50 text-amber-800 border border-amber-200 text-sm font-semibold rounded-xl hover:bg-amber-100 transition">
+                  โหลดข้อมูลตัวอย่างตามแบบฟอร์ม
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW C: EXPORT & พิมพ์แบบฟอร์ม "ตารางการปฏิบัติงาน" ขนาด A4
+             =============================================================== -->
+        <section id="view-export" class="hidden space-y-6">
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Export แบบฟอร์ม "ตารางการปฏิบัติงาน" (A4)</h2>
+              <p class="text-sm text-slate-500 mt-0.5">จัดรูปแบบเหมือนเอกสารต้นฉบับ พร้อมพิมพ์ สั่งบันทึกเป็น PDF หรือดาวน์โหลดรูปภาพ PNG</p>
+            </div>
+
+            <!-- ปุ่ม Export หลัก 3 รูปแบบ -->
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button type="button" onclick="handlePrintForm()"
+                class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                พิมพ์ / บันทึก PDF (Print)
+              </button>
+
+              <button type="button" onclick="handleDownloadPDF()"
+                class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                ดาวน์โหลดไฟล์ PDF
+              </button>
+
+              <button type="button" onclick="handleDownloadPNG()"
+                class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                ดาวน์โหลดรูป PNG
+              </button>
+            </div>
+          </div>
+
+          <!-- แผงตั้งค่าแบบฟอร์ม Export -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+              ปรับแต่งรูปแบบเอกสารตารางการปฏิบัติงาน
+            </h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- จำนวนแถวต่อหน้า -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">จำนวนแถวต่อ 1 หน้า A4</label>
+                <select id="export-rows-per-page" onchange="renderA4Preview()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500">
+                  <option value="8" selected>8 แถว/หน้า (เหมือนต้นฉบับ)</option>
+                  <option value="10">10 แถว/หน้า</option>
+                  <option value="12">12 แถว/หน้า</option>
+                </select>
+              </div>
+
+              <!-- รูปแบบปี ค.ศ. / พ.ศ. -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">รูปแบบปีในวันที่</label>
+                <select id="export-year-format" onchange="renderA4Preview()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500">
+                  <option value="ce" selected>ปี ค.ศ. (เช่น 26/8/2026)</option>
+                  <option value="be">ปี พ.ศ. (เช่น 26/8/2569)</option>
+                </select>
+              </div>
+
+              <!-- การแสดงช่องติ๊กสถานะ -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">ช่อง "นักศึกษาปฏิบัติงานสำเร็จ"</label>
+                <select id="export-checkbox-mode" onchange="renderA4Preview()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500">
+                  <option value="blank" selected>เว้นช่องสี่เหลี่ยมว่าง (ให้พี่เลี้ยงติ๊ก)</option>
+                  <option value="checked">แสดงเครื่องหมาย ✓ ตามที่บันทึก</option>
+                </select>
+              </div>
+
+              <!-- สวิตช์แสดง คณะ/สาขา/แผนก -->
+              <div class="flex flex-col justify-center">
+                <label class="block text-xs font-semibold text-slate-600 mb-1">ข้อมูลเพิ่มเติมในหัวตาราง</label>
+                <label class="inline-flex items-center gap-2.5 cursor-pointer py-1.5">
+                  <input id="export-show-extra" type="checkbox" onchange="renderA4Preview()"
+                    class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500" />
+                  <span class="text-sm text-slate-700">แสดง คณะ / สาขา / แผนก</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- กรองช่วงวันที่สำหรับ Export + ช่องกรอกหมายเหตุท้ายตาราง -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-2 border-t border-slate-100">
+              <div class="lg:col-span-5 grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">ตั้งแต่วันที่ (ไม่บังคับ)</label>
+                  <input id="export-date-from" type="date" onchange="renderA4Preview()"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-brand-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">ถึงวันที่ (ไม่บังคับ)</label>
+                  <input id="export-date-to" type="date" onchange="renderA4Preview()"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-brand-500" />
+                </div>
+              </div>
+
+              <div class="lg:col-span-7">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="export-note-input" class="block text-xs font-semibold text-slate-600">หมายเหตุท้ายแบบฟอร์ม (บันทึกลงฐานข้อมูลอัตโนมัติ)</label>
+                  <button type="button" onclick="fillSampleNote()" class="text-xs text-brand-600 hover:underline font-medium">
+                    ใส่ตัวอย่างหมายเหตุ
+                  </button>
+                </div>
+                <div class="flex gap-2">
+                  <input id="export-note-input" type="text" oninput="handleNoteInput()"
+                    placeholder="เช่น วันที่ 28 สิงหาคม 2569 ลาไปสอบ DPU - TEP"
+                    class="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-brand-500" />
+                  <button type="button" onclick="saveExportNoteToCloud()"
+                    class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition shrink-0">
+                    บันทึกหมายเหตุ
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- พื้นที่แสดงตัวอย่างเอกสาร A4 จริง (PRINT AREA) -->
+          <div class="bg-slate-200/70 rounded-3xl p-3 sm:p-6 border border-slate-300/80 overflow-hidden">
+            <div class="flex items-center justify-between mb-3 px-1">
+              <span id="a4-page-count-label" class="text-xs font-semibold text-slate-600">ตัวอย่างเอกสารขนาด A4 (จำนวน 1 หน้า)</span>
+              <span class="text-xs text-slate-500">ฟอนต์ Sarabun • ขนาดมาตรฐาน A4 (210 × 297 มม.)</span>
+            </div>
+
+            <div id="print-area" class="a4-preview-wrapper">
+              <!-- สร้างหน้ากระดาษ A4 ด้วย JavaScript -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW D: ข้อมูลส่วนตัวนักศึกษา (PROFILE VIEW)
+             =============================================================== -->
+        <section id="view-profile" class="hidden space-y-6">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-900">ข้อมูลส่วนตัวนักศึกษา</h2>
+            <p class="text-sm text-slate-500 mt-0.5">ข้อมูลนี้จะถูกนำไปแสดงบนแดชบอร์ดและหัวแบบฟอร์มตารางการปฏิบัติงานโดยอัตโนมัติ</p>
+          </div>
+
+          <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs max-w-3xl">
+            <div class="flex items-center gap-4 pb-6 mb-6 border-b border-slate-100">
+              <div id="profile-avatar-large" class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-700 to-blue-500 text-white text-2xl font-bold flex items-center justify-center shadow-md">
+                นศ
+              </div>
+              <div>
+                <h3 id="profile-display-name" class="text-lg font-bold text-slate-900">-</h3>
+                <p id="profile-display-email" class="text-sm text-slate-500">-</p>
+              </div>
+            </div>
+
+            <form onsubmit="handleSaveProfile(event)" class="space-y-5">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div class="sm:col-span-2">
+                  <label class="block text-sm font-medium text-slate-700 mb-1">ชื่อ - นามสกุล <span class="text-rose-500">*</span></label>
+                  <input id="prof-fullname" type="text" required
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm" />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">รหัสนักศึกษา <span class="text-rose-500">*</span></label>
+                  <input id="prof-studentid" type="text" required
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm" />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">เป้าหมายชั่วโมงฝึกงานรวม (ชั่วโมง) <span class="text-rose-500">*</span></label>
+                  <input id="prof-targethours" type="number" required min="1" max="3000"
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm" />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">คณะ <span class="text-rose-500">*</span></label>
+                  <input id="prof-faculty" type="text" required
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm" />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">สาขาวิชา <span class="text-rose-500">*</span></label>
+                  <input id="prof-major" type="text" required
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm" />
+                </div>
+
+                <div class="sm:col-span-2">
+                  <label class="block text-sm font-medium text-slate-700 mb-1">แผนกที่ฝึกงาน <span class="text-rose-500">*</span></label>
+                  <input id="prof-department" type="text" required
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm" />
+                </div>
+              </div>
+
+              <div class="pt-3 flex justify-end">
+                <button type="submit"
+                  class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-sm transition text-sm">
+                  บันทึกข้อมูลส่วนตัว
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- MOBILE BOTTOM NAVIGATION BAR -->
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 grid grid-cols-4 py-1.5 px-1 shadow-lg">
+      <button type="button" data-nav="dashboard" onclick="navigateTo('dashboard')"
+        class="nav-item flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-medium text-slate-500">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+        แดชบอร์ด
+      </button>
+
+      <button type="button" data-nav="logs" onclick="navigateTo('logs')"
+        class="nav-item flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-medium text-slate-500">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+        บันทึกงาน
+      </button>
+
+      <button type="button" data-nav="export" onclick="navigateTo('export')"
+        class="nav-item flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-medium text-slate-500">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
+        Export A4
+      </button>
+
+      <button type="button" data-nav="profile" onclick="navigateTo('profile')"
+        class="nav-item flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-medium text-slate-500">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+        โปรไฟล์
+      </button>
+    </nav>
+  </div>
+
+  <!-- =====================================================================
+       MODAL: เพิ่ม / แก้ไขบันทึกการปฏิบัติงาน (ADD / EDIT WORK LOG MODAL)
+       ===================================================================== -->
+  <div id="log-modal" class="fixed inset-0 z-40 hidden items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden animate-fade-in">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <h3 id="log-modal-title" class="text-lg font-bold text-slate-900">เพิ่มบันทึกการปฏิบัติงาน</h3>
+        <button type="button" onclick="closeLogModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form onsubmit="handleSaveWorkLog(event)" class="p-6 space-y-4">
+        <input type="hidden" id="log-edit-id" value="" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- เลือกวันที่ -->
+          <div>
+            <label for="log-date" class="block text-sm font-medium text-slate-700 mb-1">วัน/เดือน/ปี <span class="text-rose-500">*</span></label>
+            <input id="log-date" type="date" required oninput="updateModalDatePreview()"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm" />
+            <p id="log-date-preview" class="text-xs text-brand-600 mt-1 font-medium">รูปแบบในฟอร์ม: -</p>
+          </div>
+
+          <!-- จำนวนชั่วโมง -->
+          <div>
+            <label for="log-hours" class="block text-sm font-medium text-slate-700 mb-1">ชั่วโมงปฏิบัติงาน <span class="text-rose-500">*</span></label>
+            <input id="log-hours" type="number" required step="0.5" min="0.5" max="24" value="8"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm" />
+            <div class="flex gap-1.5 mt-1.5">
+              <button type="button" onclick="document.getElementById('log-hours').value=4" class="px-2 py-0.5 text-[11px] bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">4 ชม.</button>
+              <button type="button" onclick="document.getElementById('log-hours').value=7" class="px-2 py-0.5 text-[11px] bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 font-medium">7 ชม.</button>
+              <button type="button" onclick="document.getElementById('log-hours').value=8" class="px-2 py-0.5 text-[11px] bg-brand-50 hover:bg-brand-100 rounded-md text-brand-700 font-semibold">8 ชม.</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- งานหรือกิจกรรมที่ได้รับมอบหมาย -->
+        <div>
+          <label for="log-task" class="block text-sm font-medium text-slate-700 mb-1">งานหรือกิจกรรมที่ได้รับมอบหมาย <span class="text-rose-500">*</span></label>
+          <textarea id="log-task" rows="4" required placeholder="อธิบายงานหรือกิจกรรมที่ปฏิบัติในวันนี้ (สามารถขึ้นบรรทัดใหม่ได้)..."
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm leading-relaxed"></textarea>
+        </div>
+
+        <!-- สถานะนักศึกษาปฏิบัติงานสำเร็จ -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">สถานะ "นักศึกษาปฏิบัติงานสำเร็จ"</label>
+          <div class="grid grid-cols-3 gap-2.5">
+            <label class="cursor-pointer">
+              <input type="radio" name="log-status" value="completed" checked class="peer sr-only" />
+              <div class="p-2.5 text-center rounded-xl border border-slate-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 text-xs font-semibold transition">
+                ✓ สำเร็จ
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="log-status" value="incomplete" class="peer sr-only" />
+              <div class="p-2.5 text-center rounded-xl border border-slate-200 peer-checked:border-rose-500 peer-checked:bg-rose-50 peer-checked:text-rose-700 text-xs font-semibold transition">
+                ✕ ไม่สำเร็จ
+              </div>
+            </label>
+
+            <label class="cursor-pointer">
+              <input type="radio" name="log-status" value="unspecified" class="peer sr-only" />
+              <div class="p-2.5 text-center rounded-xl border border-slate-200 peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 text-xs font-semibold transition">
+                ☐ ยังไม่ระบุ
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">
+          <button type="button" onclick="closeLogModal()"
+            class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-semibold transition">
+            ยกเลิก
+          </button>
+          <button type="submit"
+            class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition">
+            บันทึกข้อมูล
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL: ยืนยันการลบข้อมูล (CUSTOM CONFIRMATION MODAL - ไม่ใช้ confirm())
+       ===================================================================== -->
+  <div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-slate-100 text-center">
+      <div class="mx-auto w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900">ยืนยันการลบบันทึก?</h3>
+      <p id="delete-modal-desc" class="text-sm text-slate-500 mt-1">คุณต้องการลบบันทึกการปฏิบัติงานรายการนี้ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+      <div class="mt-5 grid grid-cols-2 gap-2.5">
+        <button type="button" onclick="closeDeleteModal()"
+          class="py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-semibold transition">
+          ยกเลิก
+        </button>
+        <button type="button" id="confirm-delete-btn"
+          class="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold shadow-sm transition">
+          ลบรายการ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       FIREBASE & APPLICATION LOGIC (SINGLE-FILE MODULE)
+       ===================================================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc as _getDoc,
+      setDoc as _setDoc,
+      addDoc as _addDoc,
+      updateDoc as _updateDoc,
+      deleteDoc as _deleteDoc,
+      onSnapshot,
+      collection
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // =========================================================================
+    // 1. ตั้งค่า FIREBASE CONFIG ของโปรเจกต์ internshipdailyworklog
+    // =========================================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyA8Cc3zefKzQ4rS_rtx7GgNkjRZhvRUA-c",
+      authDomain: "internshipdailyworklog-1e895.firebaseapp.com",
+      projectId: "internshipdailyworklog-1e895",
+      storageBucket: "internshipdailyworklog-1e895.firebasestorage.app",
+      messagingSenderId: "182972470054",
+      appId: "1:182972470054:web:878b578342f12582c7e7e7",
+      measurementId: "G-04TF35M33P"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // ครอบทุกคำสั่งอ่าน/เขียน Firestore ด้วย timeout เพื่อไม่ให้หน้าจอหมุนค้างไม่รู้จบ
+    const FIRESTORE_TIMEOUT_MS = 15000;
+    const getDoc = (...args) => withTimeout(_getDoc(...args), FIRESTORE_TIMEOUT_MS);
+    const setDoc = (...args) => withTimeout(_setDoc(...args), FIRESTORE_TIMEOUT_MS);
+    const addDoc = (...args) => withTimeout(_addDoc(...args), FIRESTORE_TIMEOUT_MS);
+    const updateDoc = (...args) => withTimeout(_updateDoc(...args), FIRESTORE_TIMEOUT_MS);
+    const deleteDoc = (...args) => withTimeout(_deleteDoc(...args), FIRESTORE_TIMEOUT_MS);
+
+    // =========================================================================
+    // 2. สถานะของแอปพลิเคชัน (APPLICATION STATE)
+    // =========================================================================
+    let isRegistering = false;
+
+    const state = {
+      user: null,
+      profile: {
+        email: '',
+        fullName: 'นายจักร์ภัทร์ เทดี้',
+        studentId: '68113085',
+        faculty: 'คณะบริหารธุรกิจ',
+        major: 'การบัญชี',
+        department: 'แผนกบัญชีและการเงิน',
+        targetHours: 320
+      },
+      workLogs: [],
+      exportNote: '',
+      chartMode: 'daily',
+      currentView: 'dashboard',
+      unsubscribers: [],
+      subscribedUid: null,
+      pendingDeleteId: null
+    };
+
+    // ข้อมูลตัวอย่าง 8 วันตามเอกสารต้นฉบับในภาพ
+    const SAMPLE_WORK_LOGS = [
+      {
+        date: '2026-08-26',
+        task: 'เรียนรู้เอกสารภายในหน่วยงาน\nและตรวจเช็คใบกำกับภาษีของเดือนกรกฎาคม',
+        hours: 8,
+        status: 'completed'
+      },
+      {
+        date: '2026-08-27',
+        task: 'เรียนรู้เอกสารภายในหน่วยงาน\nและตรวจเช็คใบกำกับภาษีของเดือนกรกฎาคม',
+        hours: 8,
+        status: 'completed'
+      },
+      {
+        date: '2026-08-31',
+        task: 'สแกนใบกำกับภาษี',
+        hours: 8,
+        status: 'completed'
+      },
+      {
+        date: '2026-09-01',
+        task: 'คอนเฟิร์มใบกำกับภาษีในโปรแกรม IIA',
+        hours: 8,
+        status: 'completed'
+      },
+      {
+        date: '2026-09-02',
+        task: 'คอนเฟิร์มใบกำกับภาษีในโปรแกรม IIA\nบันทึกข้อมูลใบกำกับภาษีลง Excel',
+        hours: 8,
+        status: 'completed'
+      },
+      {
+        date: '2026-09-03',
+        task: 'คอนเฟิร์มใบกำกับภาษีในโปรแกรม IIA\nบันทึกข้อมูลใบกำกับภาษีลง Excel',
+        hours: 8,
+        status: 'completed'
+      },
+      {
+        date: '2026-09-04',
+        task: 'คอนเฟิร์มใบกำกับภาษีในโปรแกรม IIA',
+        hours: 8,
+        status: 'completed'
+      },
+      {
+        date: '2026-09-07',
+        task: 'คอนเฟิร์มใบกำกับภาษีในโปรแกรม IIA',
+        hours: 8,
+        status: 'completed'
+      }
+    ];
+
+    const SAMPLE_NOTE_TEXT = 'วันที่ 28 สิงหาคม 2569 ลาไปสอบ DPU - TEP';
+
+    // =========================================================================
+    // 3. ฟังก์ชันช่วยเหลือด้าน UI (TOAST, LOADER, FORMATTING)
+    // =========================================================================
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+
+      const styles = {
+        success: 'bg-emerald-600 text-white border-emerald-500',
+        error: 'bg-rose-600 text-white border-rose-500',
+        info: 'bg-slate-800 text-white border-slate-700'
+      };
+
+      const icons = {
+        success: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`,
+        error: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`,
+        info: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border text-sm font-medium transition-all duration-300 transform translate-y-0 opacity-100 ${styles[type] || styles.info}`;
+      toast.innerHTML = `${icons[type] || icons.info}<span class="flex-1">${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4200);
+    }
+
+    function setLoading(show, text = 'กำลังประมวลผล...') {
+      const loader = document.getElementById('global-loader');
+      const label = document.getElementById('loader-text');
+      label.textContent = text;
+      if (show) {
+        loader.classList.remove('hidden');
+        loader.classList.add('flex');
+      } else {
+        loader.classList.add('hidden');
+        loader.classList.remove('flex');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function formatFormDate(isoDate, useBuddhistEra = false) {
+      if (!isoDate || !isoDate.includes('-')) return isoDate || '';
+      const [yStr, mStr, dStr] = isoDate.split('-');
+      const day = parseInt(dStr, 10);
+      const month = parseInt(mStr, 10);
+      let year = parseInt(yStr, 10);
+      if (useBuddhistEra) year += 543;
+      return `${day}/${month}/${year}`;
+    }
+
+    function getInitials(name) {
+      if (!name) return 'นศ';
+      const cleaned = name.replace(/^(นาย|นางสาว|นาง|ด\.ช\.|ด\.ญ\.)\s*/g, '').trim();
+      return cleaned.substring(0, 2) || 'นศ';
+    }
+
+    // กันไม่ให้หน้าจอค้างหมุนไม่รู้จบ เมื่อ Firestore ไม่ตอบสนอง (เช่น ยังไม่ได้สร้างฐานข้อมูล)
+    function withTimeout(promise, ms) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject({ code: 'app/firestore-timeout' }), ms))
+      ]);
+    }
+
+    function mapFirebaseErrorMessage(err) {
+      const code = err?.code || '';
+      if (code === 'app/firestore-timeout') {
+        return 'Cloud Firestore ไม่ตอบกลับ กรุณาตรวจสอบว่าสร้างฐานข้อมูล Firestore ในโปรเจกต์แล้ว ตั้ง Rules ถูกต้อง และเครือข่ายเชื่อมต่อได้ แล้วลองใหม่อีกครั้ง';
+      }
+      if (code === 'auth/operation-not-allowed') {
+        return 'ยังไม่ได้เปิดใช้งาน Email/Password ใน Firebase Console (Authentication > Sign-in method)';
+      }
+      if (code === 'auth/email-already-in-use') {
+        return 'อีเมลนี้ถูกใช้งานในระบบแล้ว กรุณาสลับไปหน้าเข้าสู่ระบบ';
+      }
+      if (code === 'auth/weak-password') {
+        return 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร';
+      }
+      if (code === 'auth/invalid-email') {
+        return 'รูปแบบอีเมลไม่ถูกต้อง';
+      }
+      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+      }
+      if (code === 'auth/too-many-requests') {
+        return 'ลองเข้าสู่ระบบหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่';
+      }
+      if (code === 'auth/network-request-failed') {
+        return 'ไม่สามารถเชื่อมต่ออินเทอร์เน็ตได้ กรุณาตรวจสอบเครือข่าย';
+      }
+      if (code === 'permission-denied') {
+        return 'สิทธิ์เข้าถึง Cloud Firestore ถูกปฏิเสธ กรุณาตรวจสอบ Firestore Rules ใน Firebase Console';
+      }
+      return err?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อระบบ';
+    }
+
+    // =========================================================================
+    // 4. ระบบยืนยันตัวตน (LOGIN / REGISTER / LOGOUT)
+    // =========================================================================
+    window.switchAuthTab = function(tab) {
+      const loginForm = document.getElementById('login-form');
+      const regForm = document.getElementById('register-form');
+      const loginBtn = document.getElementById('tab-login-btn');
+      const regBtn = document.getElementById('tab-register-btn');
+
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        regForm.classList.add('hidden');
+        loginBtn.className = 'py-2.5 text-sm font-semibold rounded-lg transition-all bg-white text-brand-700 shadow-xs';
+        regBtn.className = 'py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900';
+      } else {
+        loginForm.classList.add('hidden');
+        regForm.classList.remove('hidden');
+        regBtn.className = 'py-2.5 text-sm font-semibold rounded-lg transition-all bg-white text-brand-700 shadow-xs';
+        loginBtn.className = 'py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900';
+      }
+    };
+
+    window.togglePasswordVisibility = function(inputId) {
+      const input = document.getElementById(inputId);
+      input.type = input.type === 'password' ? 'text' : 'password';
+    };
+
+    // ตรวจสอบสถานะการล็อกอินค้างไว้โดยอัตโนมัติ (Session Persistence)
+    onAuthStateChanged(auth, async (firebaseUser) => {
+      if (isRegistering) return;
+      if (firebaseUser) {
+        state.user = firebaseUser;
+        await loadInitialUserProfile(firebaseUser.uid, firebaseUser.email || '');
+        enterAppShell();
+      }
+    });
+
+    window.handleRegister = async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const fullName = document.getElementById('reg-fullname').value.trim();
+      const studentId = document.getElementById('reg-studentid').value.trim();
+      const faculty = document.getElementById('reg-faculty').value.trim();
+      const major = document.getElementById('reg-major').value.trim();
+      const department = document.getElementById('reg-department').value.trim();
+      const targetHours = Number(document.getElementById('reg-targethours').value) || 320;
+
+      isRegistering = true;
+      setLoading(true, 'กำลังสร้างบัญชีและบันทึกข้อมูลลง Firebase...');
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const firebaseUser = cred.user;
+
+        const userDocData = {
+          email,
+          fullName,
+          studentId,
+          faculty,
+          major,
+          department,
+          targetHours,
+          exportNote: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        // บันทึกโปรไฟล์ลง Cloud Firestore ที่ path: users/{uid}
+        const userRef = doc(db, 'users', firebaseUser.uid);
+        await setDoc(userRef, userDocData, { merge: true });
+
+        state.user = firebaseUser;
+        state.profile = {
+          email,
+          fullName,
+          studentId,
+          faculty,
+          major,
+          department,
+          targetHours
+        };
+        state.exportNote = '';
+
+        enterAppShell();
+        showToast('สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ' + fullName, 'success');
+      } catch (err) {
+        console.error('Register error:', err);
+        showToast(mapFirebaseErrorMessage(err), 'error');
+      } finally {
+        isRegistering = false;
+        setLoading(false);
+      }
+    };
+
+    window.handleLogin = async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      setLoading(true, 'กำลังเข้าสู่ระบบ...');
+      try {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const firebaseUser = cred.user;
+
+        state.user = firebaseUser;
+        await loadInitialUserProfile(firebaseUser.uid, email);
+
+        enterAppShell();
+        showToast('เข้าสู่ระบบสำเร็จ', 'success');
+      } catch (err) {
+        console.error('Login error:', err);
+        showToast(mapFirebaseErrorMessage(err), 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    async function loadInitialUserProfile(uid, fallbackEmail = '') {
+      try {
+        const userRef = doc(db, 'users', uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          state.profile = {
+            email: data.email || fallbackEmail,
+            fullName: data.fullName || 'นักศึกษาฝึกงาน',
+            studentId: data.studentId || '',
+            faculty: data.faculty || '',
+            major: data.major || '',
+            department: data.department || '',
+            targetHours: Number(data.targetHours) || 320
+          };
+          state.exportNote = data.exportNote || '';
+          document.getElementById('firestore-warning-banner').classList.add('hidden');
+        } else {
+          const defaultProfile = {
+            email: fallbackEmail || 'student@university.ac.th',
+            fullName: 'นักศึกษาฝึกงาน',
+            studentId: '68113085',
+            faculty: 'คณะเทคโนโลยีสารสนเทศ',
+            major: 'วิทยาการคอมพิวเตอร์',
+            department: 'แผนกพัฒนาระบบ',
+            targetHours: 320,
+            exportNote: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await setDoc(userRef, defaultProfile, { merge: true });
+          state.profile = defaultProfile;
+          state.exportNote = '';
+        }
+      } catch (err) {
+        console.error('Load initial profile error:', err);
+        if (err?.code === 'permission-denied') {
+          document.getElementById('firestore-warning-banner').classList.remove('hidden');
+        }
+      }
+    }
+
+    window.handleLogout = async function() {
+      state.unsubscribers.forEach(unsub => {
+        try { unsub(); } catch (e) {}
+      });
+      state.unsubscribers = [];
+      state.subscribedUid = null;
+
+      state.user = null;
+      state.workLogs = [];
+      state.exportNote = '';
+
+      try { await signOut(auth); } catch (e) {}
+
+      document.getElementById('firestore-warning-banner').classList.add('hidden');
+      document.getElementById('app-shell').classList.add('hidden');
+      document.getElementById('auth-screen').classList.remove('hidden');
+      showToast('ออกจากระบบเรียบร้อยแล้ว', 'info');
+    };
+
+    // =========================================================================
+    // 5. เชื่อมต่อ REAL-TIME FIRESTORE LISTENERS (users/{uid} & users/{uid}/workLogs)
+    // =========================================================================
+    function enterAppShell() {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app-shell').classList.remove('hidden');
+
+      const noteInput = document.getElementById('export-note-input');
+      if (noteInput) noteInput.value = state.exportNote || '';
+
+      updateProfileUI();
+
+      subscribeRealtimeData();
+
+      navigateTo('dashboard');
+    }
+
+    function subscribeRealtimeData() {
+      if (!state.user) return;
+      const uid = state.user.uid;
+
+      // กันเปิด listener ซ้ำ (เช่น ทั้งปุ่มเข้าสู่ระบบและ onAuthStateChanged เรียกพร้อมกัน)
+      if (state.subscribedUid === uid && state.unsubscribers.length > 0) return;
+      state.subscribedUid = uid;
+
+      state.unsubscribers.forEach(u => {
+        try { u(); } catch (e) {}
+      });
+      state.unsubscribers = [];
+
+      // 1) Listen เอกสารผู้ใช้ users/{uid} (เก็บโปรไฟล์และ exportNote)
+      const userDocRef = doc(db, 'users', uid);
+      const unsubUserDoc = onSnapshot(
+        userDocRef,
+        (docSnap) => {
+          document.getElementById('firestore-warning-banner').classList.add('hidden');
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            state.profile = {
+              email: data.email || state.user.email || '',
+              fullName: data.fullName || state.profile.fullName,
+              studentId: data.studentId || '',
+              faculty: data.faculty || '',
+              major: data.major || '',
+              department: data.department || '',
+              targetHours: Number(data.targetHours) || 320
+            };
+            if (typeof data.exportNote === 'string') {
+              state.exportNote = data.exportNote;
+              const noteInput = document.getElementById('export-note-input');
+              if (noteInput && document.activeElement !== noteInput) {
+                noteInput.value = state.exportNote;
+              }
+            }
+            updateProfileUI();
+            renderDashboard();
+            renderA4Preview();
+          }
+        },
+        (error) => {
+          console.error('User doc snapshot error:', error);
+          if (error?.code === 'permission-denied') {
+            document.getElementById('firestore-warning-banner').classList.remove('hidden');
+          }
+        }
+      );
+
+      // 2) Listen คอลเลกชันบันทึกการปฏิบัติงาน users/{uid}/workLogs แบบ Real-time
+      const logsColRef = collection(db, 'users', uid, 'workLogs');
+      const unsubLogs = onSnapshot(
+        logsColRef,
+        (querySnap) => {
+          const items = [];
+          querySnap.forEach((docItem) => {
+            items.push({ id: docItem.id, ...docItem.data() });
+          });
+          items.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+          state.workLogs = items;
+
+          renderDashboard();
+          renderLogsList();
+          renderA4Preview();
+        },
+        (error) => {
+          console.error('Work logs snapshot error:', error);
+          if (error?.code === 'permission-denied') {
+            document.getElementById('firestore-warning-banner').classList.remove('hidden');
+          } else {
+            showToast(mapFirebaseErrorMessage(error), 'error');
+          }
+        }
+      );
+
+      state.unsubscribers.push(unsubUserDoc, unsubLogs);
+    }
+
+    // =========================================================================
+    // 6. การนำทางระหว่างหน้า (NAVIGATION)
+    // =========================================================================
+    window.navigateTo = function(viewName) {
+      state.currentView = viewName;
+      const views = ['dashboard', 'logs', 'export', 'profile'];
+      views.forEach((v) => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) {
+          if (v === viewName) el.classList.remove('hidden');
+          else el.classList.add('hidden');
+        }
+      });
+
+      document.querySelectorAll('.nav-item').forEach((btn) => {
+        const target = btn.getAttribute('data-nav');
+        const isMobile = btn.closest('nav.lg\\:hidden');
+        if (target === viewName) {
+          if (isMobile) {
+            btn.className = 'nav-item flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold text-brand-600 bg-brand-50/70';
+          } else {
+            btn.className = 'nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition bg-brand-50 text-brand-700';
+          }
+        } else {
+          if (isMobile) {
+            btn.className = 'nav-item flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-medium text-slate-500';
+          } else {
+            btn.className = 'nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-slate-600 hover:bg-slate-50';
+          }
+        }
+      });
+
+      if (viewName === 'export') {
+        renderA4Preview();
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // =========================================================================
+    // 7. จัดการข้อมูลส่วนตัว (PROFILE MANAGEMENT)
+    // =========================================================================
+    function updateProfileUI() {
+      const p = state.profile;
+      const initials = getInitials(p.fullName);
+
+      document.getElementById('sidebar-avatar').textContent = initials;
+      document.getElementById('sidebar-name').textContent = p.fullName || '-';
+      document.getElementById('sidebar-studentid').textContent = `รหัส: ${p.studentId || '-'}`;
+      document.getElementById('sidebar-dept').textContent = `แผนก: ${p.department || '-'}`;
+      document.getElementById('mobile-header-sub').textContent = `${p.fullName || ''} (${p.studentId || ''})`;
+
+      document.getElementById('dash-student-name').textContent = p.fullName || '-';
+      document.getElementById('dash-student-id').textContent = p.studentId || '-';
+      document.getElementById('dash-faculty').textContent = p.faculty || '-';
+      document.getElementById('dash-major').textContent = p.major || '-';
+      document.getElementById('dash-dept').textContent = p.department || '-';
+
+      document.getElementById('profile-avatar-large').textContent = initials;
+      document.getElementById('profile-display-name').textContent = p.fullName || '-';
+      document.getElementById('profile-display-email').textContent = p.email || (state.user ? state.user.email : '') || 'บัญชีนักศึกษาฝึกงาน';
+
+      document.getElementById('prof-fullname').value = p.fullName || '';
+      document.getElementById('prof-studentid').value = p.studentId || '';
+      document.getElementById('prof-targethours').value = p.targetHours || 320;
+      document.getElementById('prof-faculty').value = p.faculty || '';
+      document.getElementById('prof-major').value = p.major || '';
+      document.getElementById('prof-department').value = p.department || '';
+    }
+
+    window.handleSaveProfile = async function(e) {
+      e.preventDefault();
+      if (!state.user) return;
+
+      const updated = {
+        ...state.profile,
+        fullName: document.getElementById('prof-fullname').value.trim(),
+        studentId: document.getElementById('prof-studentid').value.trim(),
+        targetHours: Number(document.getElementById('prof-targethours').value) || 320,
+        faculty: document.getElementById('prof-faculty').value.trim(),
+        major: document.getElementById('prof-major').value.trim(),
+        department: document.getElementById('prof-department').value.trim(),
+        updatedAt: new Date().toISOString()
+      };
+
+      setLoading(true, 'กำลังบันทึกข้อมูลส่วนตัวลง Firebase...');
+      try {
+        const userRef = doc(db, 'users', state.user.uid);
+        await setDoc(userRef, updated, { merge: true });
+        state.profile = updated;
+        updateProfileUI();
+        renderDashboard();
+        renderA4Preview();
+        showToast('บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว', 'success');
+      } catch (err) {
+        console.error('Save profile error:', err);
+        showToast(mapFirebaseErrorMessage(err), 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // =========================================================================
+    // 8. แดชบอร์ดสรุปผลและกราฟ (DASHBOARD & CHART)
+    // =========================================================================
+    window.setChartMode = function(mode) {
+      state.chartMode = mode;
+      const dailyBtn = document.getElementById('chart-mode-daily');
+      const weeklyBtn = document.getElementById('chart-mode-weekly');
+      if (mode === 'daily') {
+        dailyBtn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-brand-700 shadow-2xs transition';
+        weeklyBtn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition';
+      } else {
+        weeklyBtn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-brand-700 shadow-2xs transition';
+        dailyBtn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition';
+      }
+      renderHoursChart();
+    };
+
+    function renderDashboard() {
+      const logs = state.workLogs;
+      const targetHours = Number(state.profile.targetHours) || 320;
+
+      const totalDays = logs.length;
+      const totalHours = logs.reduce((sum, item) => sum + (Number(item.hours) || 0), 0);
+      const completedCount = logs.filter((i) => i.status === 'completed').length;
+      const incompleteCount = logs.filter((i) => i.status === 'incomplete').length;
+      const unspecifiedCount = logs.filter((i) => !i.status || i.status === 'unspecified').length;
+
+      const progressPct = Math.min(100, Math.round((totalHours / targetHours) * 100));
+      const remainingHours = Math.max(0, targetHours - totalHours);
+      const successRate = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
+
+      document.getElementById('stat-total-days').textContent = totalDays;
+      document.getElementById('stat-total-hours').textContent = totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1);
+      document.getElementById('stat-target-hours').textContent = targetHours;
+      document.getElementById('stat-progress-percent').textContent = `${progressPct}%`;
+      document.getElementById('stat-remaining-hours').textContent = remainingHours > 0 ? `เหลืออีก ${remainingHours} ชม.` : 'ครบเป้าหมายแล้ว!';
+      document.getElementById('stat-progress-bar').style.width = `${progressPct}%`;
+
+      document.getElementById('stat-completed-count').textContent = completedCount;
+      document.getElementById('stat-success-rate').textContent = `คิดเป็น ${successRate}% ของงานทั้งหมด`;
+
+      document.getElementById('stat-incomplete-count').textContent = incompleteCount + unspecifiedCount;
+      document.getElementById('stat-status-breakdown').textContent = `ไม่สำเร็จ ${incompleteCount} • ยังไม่ระบุ ${unspecifiedCount}`;
+
+      renderHoursChart();
+      renderRecentLogs();
+    }
+
+    function renderHoursChart() {
+      const container = document.getElementById('hours-chart-container');
+      const logs = [...state.workLogs].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+      if (logs.length === 0) {
+        container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm">ยังไม่มีข้อมูลชั่วโมงฝึกงานสำหรับแสดงกราฟ</div>`;
+        return;
+      }
+
+      let bars = [];
+      if (state.chartMode === 'daily') {
+        const slice = logs.slice(-8);
+        bars = slice.map((item) => ({
+          label: formatFormDate(item.date, false).replace(/\/\d{4}$/, ''),
+          fullDate: formatFormDate(item.date, false),
+          value: Number(item.hours) || 0
+        }));
+      } else {
+        const weekMap = new Map();
+        logs.forEach((item, idx) => {
+          const weekNum = Math.floor(idx / 5) + 1;
+          const key = `สัปดาห์ ${weekNum}`;
+          weekMap.set(key, (weekMap.get(key) || 0) + (Number(item.hours) || 0));
+        });
+        bars = Array.from(weekMap.entries()).slice(-6).map(([label, value]) => ({
+          label,
+          fullDate: label,
+          value
+        }));
+      }
+
+      const maxVal = Math.max(...bars.map((b) => b.value), 8);
+
+      const barsHtml = bars.map((bar) => {
+        const heightPct = Math.max(8, Math.round((bar.value / maxVal) * 100));
+        return `
+          <div class="flex-1 flex flex-col items-center gap-2 group min-w-0">
+            <span class="text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md">${bar.value} ชม.</span>
+            <div class="w-full max-w-[44px] h-36 bg-slate-100 rounded-xl flex items-end p-1 overflow-hidden">
+              <div class="w-full bg-gradient-to-t from-brand-600 to-blue-400 group-hover:from-brand-700 group-hover:to-blue-500 rounded-lg transition-all duration-500"
+                style="height: ${heightPct}%" title="${escapeHtml(bar.fullDate)}: ${bar.value} ชั่วโมง"></div>
+            </div>
+            <span class="text-[11px] font-medium text-slate-500 truncate max-w-full">${escapeHtml(bar.label)}</span>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `<div class="w-full flex items-end justify-between gap-2 sm:gap-3 pt-2">${barsHtml}</div>`;
+    }
+
+    function renderRecentLogs() {
+      const container = document.getElementById('recent-logs-list');
+      const recent = [...state.workLogs]
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        .slice(0, 5);
+
+      if (recent.length === 0) {
+        container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm">ยังไม่มีรายการบันทึก</div>`;
+        return;
+      }
+
+      container.innerHTML = recent.map((item) => {
+        const badge = getStatusBadgeHtml(item.status);
+        return `
+          <div class="p-3 rounded-xl bg-slate-50/80 hover:bg-slate-100/80 border border-slate-100 transition flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs font-bold text-brand-700">${formatFormDate(item.date, false)}</span>
+                <span class="text-[11px] text-slate-400">• ${item.hours || 8} ชม.</span>
+              </div>
+              <p class="text-xs text-slate-700 line-clamp-2 whitespace-pre-line">${escapeHtml(item.task)}</p>
+            </div>
+            <div class="shrink-0">${badge}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getStatusBadgeHtml(status) {
+      if (status === 'completed') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70">✓ สำเร็จ</span>`;
+      }
+      if (status === 'incomplete') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/70">✕ ไม่สำเร็จ</span>`;
+      }
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">☐ ยังไม่ระบุ</span>`;
+    }
+
+    // =========================================================================
+    // 9. จัดการบันทึกการปฏิบัติงานรายวัน (CRUD ON users/{uid}/workLogs)
+    // =========================================================================
+    window.openLogModal = function(logId = null) {
+      const modal = document.getElementById('log-modal');
+      const title = document.getElementById('log-modal-title');
+      const editIdInput = document.getElementById('log-edit-id');
+      const dateInput = document.getElementById('log-date');
+      const hoursInput = document.getElementById('log-hours');
+      const taskInput = document.getElementById('log-task');
+
+      if (logId) {
+        const target = state.workLogs.find((i) => i.id === logId);
+        if (!target) return;
+        title.textContent = 'แก้ไขบันทึกการปฏิบัติงาน';
+        editIdInput.value = target.id;
+        dateInput.value = target.date || '';
+        hoursInput.value = target.hours || 8;
+        taskInput.value = target.task || '';
+        const radio = document.querySelector(`input[name="log-status"][value="${target.status || 'completed'}"]`);
+        if (radio) radio.checked = true;
+      } else {
+        title.textContent = 'เพิ่มบันทึกการปฏิบัติงาน';
+        editIdInput.value = '';
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        hoursInput.value = 8;
+        taskInput.value = '';
+        const radio = document.querySelector('input[name="log-status"][value="completed"]');
+        if (radio) radio.checked = true;
+      }
+
+      updateModalDatePreview();
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeLogModal = function() {
+      const modal = document.getElementById('log-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.updateModalDatePreview = function() {
+      const val = document.getElementById('log-date').value;
+      const previewEl = document.getElementById('log-date-preview');
+      if (val) {
+        previewEl.textContent = `รูปแบบในฟอร์ม: ${formatFormDate(val, false)} (พ.ศ. ${formatFormDate(val, true)})`;
+      } else {
+        previewEl.textContent = 'รูปแบบในฟอร์ม: -';
+      }
+    };
+
+    window.handleSaveWorkLog = async function(e) {
+      e.preventDefault();
+      if (!state.user) return;
+
+      const editId = document.getElementById('log-edit-id').value;
+      const date = document.getElementById('log-date').value;
+      const hours = Number(document.getElementById('log-hours').value) || 8;
+      const task = document.getElementById('log-task').value.trim();
+      const statusEl = document.querySelector('input[name="log-status"]:checked');
+      const status = statusEl ? statusEl.value : 'completed';
+
+      if (!date || !task) {
+        showToast('กรุณากรอกวันที่และรายละเอียดงานให้ครบถ้วน', 'error');
+        return;
+      }
+
+      // โหมด Firebase Cloud (users/{uid}/workLogs)
+      setLoading(true, editId ? 'กำลังอัปเดตบันทึก...' : 'กำลังบันทึกการปฏิบัติงาน...');
+      try {
+        const uid = state.user.uid;
+        if (editId) {
+          const docRef = doc(db, 'users', uid, 'workLogs', editId);
+          await updateDoc(docRef, {
+            date,
+            hours,
+            task,
+            status,
+            updatedAt: new Date().toISOString()
+          });
+          showToast('แก้ไขบันทึกเรียบร้อยแล้ว', 'success');
+        } else {
+          const colRef = collection(db, 'users', uid, 'workLogs');
+          await addDoc(colRef, {
+            date,
+            hours,
+            task,
+            status,
+            createdAt: new Date().toISOString()
+          });
+          showToast('เพิ่มบันทึกการปฏิบัติงานเรียบร้อยแล้ว', 'success');
+        }
+        closeLogModal();
+      } catch (err) {
+        console.error('Save work log error:', err);
+        showToast(mapFirebaseErrorMessage(err), 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    window.promptDeleteLog = function(logId) {
+      state.pendingDeleteId = logId;
+      const target = state.workLogs.find((i) => i.id === logId);
+      const desc = document.getElementById('delete-modal-desc');
+      if (target) {
+        desc.textContent = `ต้องการลบบันทึกวันที่ ${formatFormDate(target.date, false)} ใช่หรือไม่?`;
+      }
+      const modal = document.getElementById('delete-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeDeleteModal = function() {
+      state.pendingDeleteId = null;
+      const modal = document.getElementById('delete-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+      if (!state.user || !state.pendingDeleteId) return;
+      const idToDelete = state.pendingDeleteId;
+      closeDeleteModal();
+
+      setLoading(true, 'กำลังลบบันทึก...');
+      try {
+        const docRef = doc(db, 'users', state.user.uid, 'workLogs', idToDelete);
+        await deleteDoc(docRef);
+        showToast('ลบบันทึกเรียบร้อยแล้ว', 'success');
+      } catch (err) {
+        console.error('Delete log error:', err);
+        showToast(mapFirebaseErrorMessage(err), 'error');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    window.seedSampleData = async function() {
+      if (!state.user) return;
+
+      setLoading(true, 'กำลังเพิ่มข้อมูลตัวอย่าง 8 วันลง Firebase...');
+      try {
+        const uid = state.user.uid;
+        const logsCol = collection(db, 'users', uid, 'workLogs');
+        for (const item of SAMPLE_WORK_LOGS) {
+          await addDoc(logsCol, {
+            ...item,
+            createdAt: new Date().toISOString()
+          });
+        }
+        if (!state.exportNote) {
+          const userRef = doc(db, 'users', uid);
+          await setDoc(userRef, { exportNote: SAMPLE_NOTE_TEXT, updatedAt: new Date().toISOString() }, { merge: true });
+        }
+        showToast('โหลดข้อมูลตัวอย่าง 8 วันสำเร็จ!', 'success');
+      } catch (err) {
+        console.error('Seed error:', err);
+        showToast(mapFirebaseErrorMessage(err), 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    window.resetLogFilters = function() {
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-status').value = 'all';
+      document.getElementById('filter-date-start').value = '';
+      document.getElementById('filter-date-end').value = '';
+      renderLogsList();
+    };
+
+    window.renderLogsList = function() {
+      const search = (document.getElementById('filter-search').value || '').toLowerCase().trim();
+      const statusFilter = document.getElementById('filter-status').value;
+      const startFilter = document.getElementById('filter-date-start').value;
+      const endFilter = document.getElementById('filter-date-end').value;
+      const sortOrder = document.getElementById('sort-logs-order').value;
+
+      let filtered = [...state.workLogs].filter((item) => {
+        if (search && !(item.task || '').toLowerCase().includes(search)) return false;
+        if (statusFilter !== 'all' && (item.status || 'unspecified') !== statusFilter) return false;
+        if (startFilter && item.date < startFilter) return false;
+        if (endFilter && item.date > endFilter) return false;
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        return sortOrder === 'asc'
+          ? (a.date || '').localeCompare(b.date || '')
+          : (b.date || '').localeCompare(a.date || '');
+      });
+
+      document.getElementById('logs-count-badge').textContent = `แสดง ${filtered.length} จากทั้งหมด ${state.workLogs.length} รายการ`;
+
+      const tbody = document.getElementById('logs-table-body');
+      const mobileList = document.getElementById('logs-mobile-list');
+      const emptyState = document.getElementById('logs-empty-state');
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        mobileList.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      tbody.innerHTML = filtered.map((item, idx) => {
+        const orderNum = sortOrder === 'asc' ? idx + 1 : filtered.length - idx;
+        return `
+          <tr class="hover:bg-slate-50/90 transition">
+            <td class="py-3.5 px-4 text-center font-semibold text-slate-600">${orderNum}</td>
+            <td class="py-3.5 px-4 font-semibold text-slate-900 whitespace-nowrap">${formatFormDate(item.date, false)}</td>
+            <td class="py-3.5 px-4 text-slate-700 whitespace-pre-line leading-relaxed">${escapeHtml(item.task)}</td>
+            <td class="py-3.5 px-4 text-center font-medium text-slate-700">${item.hours || 8} ชม.</td>
+            <td class="py-3.5 px-4 text-center">${getStatusBadgeHtml(item.status)}</td>
+            <td class="py-3.5 px-4 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-1">
+                <button type="button" onclick="openLogModal('${item.id}')" title="แก้ไข"
+                  class="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <button type="button" onclick="promptDeleteLog('${item.id}')" title="ลบ"
+                  class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      mobileList.innerHTML = filtered.map((item, idx) => {
+        const orderNum = sortOrder === 'asc' ? idx + 1 : filtered.length - idx;
+        return `
+          <div class="p-4 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-brand-50 text-brand-700 text-xs font-bold flex items-center justify-center">${orderNum}</span>
+                <span class="text-sm font-bold text-slate-900">${formatFormDate(item.date, false)}</span>
+                <span class="text-xs text-slate-500">(${item.hours || 8} ชม.)</span>
+              </div>
+              ${getStatusBadgeHtml(item.status)}
+            </div>
+            <p class="text-sm text-slate-700 whitespace-pre-line leading-relaxed pl-8">${escapeHtml(item.task)}</p>
+            <div class="flex justify-end gap-2 pt-1">
+              <button type="button" onclick="openLogModal('${item.id}')"
+                class="px-3 py-1.5 text-xs font-semibold text-brand-700 bg-brand-50 rounded-lg">
+                แก้ไข
+              </button>
+              <button type="button" onclick="promptDeleteLog('${item.id}')"
+                class="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 rounded-lg">
+                ลบ
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    // =========================================================================
+    // 10. ระบบ EXPORT & พิมพ์แบบฟอร์ม "ตารางการปฏิบัติงาน" ขนาด A4 เหมือนต้นฉบับ
+    // =========================================================================
+    window.fillSampleNote = function() {
+      const input = document.getElementById('export-note-input');
+      input.value = SAMPLE_NOTE_TEXT;
+      state.exportNote = SAMPLE_NOTE_TEXT;
+      renderA4Preview();
+    };
+
+    window.handleNoteInput = function() {
+      state.exportNote = document.getElementById('export-note-input').value;
+      renderA4Preview();
+    };
+
+    window.saveExportNoteToCloud = async function() {
+      if (!state.user) return;
+      const noteText = document.getElementById('export-note-input').value;
+      state.exportNote = noteText;
+
+      setLoading(true, 'กำลังบันทึกหมายเหตุลง Firebase...');
+      try {
+        const userRef = doc(db, 'users', state.user.uid);
+        await setDoc(userRef, { exportNote: noteText, updatedAt: new Date().toISOString() }, { merge: true });
+        renderA4Preview();
+        showToast('บันทึกหมายเหตุท้ายแบบฟอร์มเรียบร้อย', 'success');
+      } catch (err) {
+        console.error('Save note error:', err);
+        showToast(mapFirebaseErrorMessage(err), 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    window.renderA4Preview = function() {
+      const printArea = document.getElementById('print-area');
+      if (!printArea) return;
+
+      const rowsPerPage = parseInt(document.getElementById('export-rows-per-page').value, 10) || 8;
+      const useBE = document.getElementById('export-year-format').value === 'be';
+      const checkboxMode = document.getElementById('export-checkbox-mode').value;
+      const showExtraInfo = document.getElementById('export-show-extra').checked;
+      const dateFrom = document.getElementById('export-date-from').value;
+      const dateTo = document.getElementById('export-date-to').value;
+      const noteText = state.exportNote || '';
+
+      let logs = [...state.workLogs]
+        .filter((item) => {
+          if (dateFrom && item.date < dateFrom) return false;
+          if (dateTo && item.date > dateTo) return false;
+          return true;
+        })
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+      const totalPages = Math.max(1, Math.ceil(logs.length / rowsPerPage));
+      document.getElementById('a4-page-count-label').textContent = `ตัวอย่างเอกสารขนาด A4 (ทั้งหมด ${totalPages} หน้า)`;
+
+      const availableBodyHeightMm = showExtraInfo ? 204 : 213;
+      const rowHeightMm = (availableBodyHeightMm / rowsPerPage).toFixed(2);
+
+      let pagesHtml = '';
+
+      for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+        const startIdx = pageIdx * rowsPerPage;
+        const pageSlice = logs.slice(startIdx, startIdx + rowsPerPage);
+
+        let rowsHtml = '';
+        for (let r = 0; r < rowsPerPage; r++) {
+          const item = pageSlice[r];
+          const globalNumber = startIdx + r + 1;
+
+          if (item) {
+            const isCompleted = checkboxMode === 'checked' && item.status === 'completed';
+            const isIncomplete = checkboxMode === 'checked' && item.status === 'incomplete';
+
+            rowsHtml += `
+              <tr style="height: ${rowHeightMm}mm;">
+                <td class="data-cell text-center font-medium">${globalNumber}</td>
+                <td class="data-cell text-center">${escapeHtml(formatFormDate(item.date, useBE))}</td>
+                <td class="data-cell task-cell">${escapeHtml(item.task)}</td>
+                <td class="data-cell text-center" style="padding: 4px 3px;">
+                  <span class="form-checkbox-box">${isCompleted ? '✓' : ''}</span>สำเร็จ
+                </td>
+                <td class="data-cell text-center" style="padding: 4px 3px;">
+                  <span class="form-checkbox-box">${isIncomplete ? '✓' : ''}</span>ไม่สำเร็จ
+                </td>
+                <td class="data-cell"></td>
+              </tr>
+            `;
+          } else {
+            rowsHtml += `
+              <tr style="height: ${rowHeightMm}mm;">
+                <td class="data-cell text-center"></td>
+                <td class="data-cell text-center"></td>
+                <td class="data-cell task-cell"></td>
+                <td class="data-cell text-center" style="padding: 4px 3px;">
+                  <span class="form-checkbox-box"></span>สำเร็จ
+                </td>
+                <td class="data-cell text-center" style="padding: 4px 3px;">
+                  <span class="form-checkbox-box"></span>ไม่สำเร็จ
+                </td>
+                <td class="data-cell"></td>
+              </tr>
+            `;
+          }
+        }
+
+        const extraRowHtml = showExtraInfo
+          ? `
+            <tr>
+              <td colspan="6" class="info-cell" style="font-size: 11.5pt; padding: 4px 10px;">
+                <strong>คณะ</strong> ${escapeHtml(state.profile.faculty || '-')} &nbsp;&nbsp;&nbsp;
+                <strong>สาขาวิชา</strong> ${escapeHtml(state.profile.major || '-')} &nbsp;&nbsp;&nbsp;
+                <strong>แผนกที่ฝึกงาน</strong> ${escapeHtml(state.profile.department || '-')}
+              </td>
+            </tr>
+          `
+          : '';
+
+        pagesHtml += `
+          <div class="a4-scaler">
+            <div class="a4-sheet">
+              <div style="flex: 1; display: flex; flex-direction: column;">
+                <table class="official-table">
+                  <colgroup>
+                    <col style="width: 9%;" />
+                    <col style="width: 15%;" />
+                    <col style="width: 39%;" />
+                    <col style="width: 10.5%;" />
+                    <col style="width: 10.5%;" />
+                    <col style="width: 16%;" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th colspan="6" class="title-cell">ตารางการปฏิบัติงาน</th>
+                    </tr>
+                    <tr>
+                      <td colspan="3" class="info-cell">
+                        <strong>ชื่อ - นามสกุล</strong>&nbsp;&nbsp;${escapeHtml(state.profile.fullName || '')}
+                      </td>
+                      <td colspan="3" class="info-cell">
+                        <strong>รหัสนักศึกษา</strong>&nbsp;&nbsp;${escapeHtml(state.profile.studentId || '')}
+                      </td>
+                    </tr>
+                    ${extraRowHtml}
+                    <tr>
+                      <th class="col-header">ลำดับที่</th>
+                      <th class="col-header">วัน/เดือน/ปี</th>
+                      <th class="col-header">งานหรือกิจกรรมที่ได้รับมอบหมาย</th>
+                      <th colspan="2" class="col-header">นักศึกษาปฏิบัติงานสำเร็จ</th>
+                      <th class="col-header">ลายเซ็นพี่เลี้ยง</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rowsHtml}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="note-footer">
+                <span class="note-label">หมายเหตุ</span>
+                <div class="note-dotted-line">${escapeHtml(noteText)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      printArea.innerHTML = pagesHtml;
+      scaleA4SheetsForViewport();
+    };
+
+    function scaleA4SheetsForViewport() {
+      const printArea = document.getElementById('print-area');
+      if (!printArea || printArea.offsetParent === null) return;
+
+      const availableWidth = printArea.clientWidth;
+      const a4PixelWidth = 794;
+      const a4PixelHeight = 1123;
+
+      const scale = availableWidth < a4PixelWidth ? (availableWidth / a4PixelWidth) : 1;
+
+      document.querySelectorAll('.a4-scaler').forEach((scaler) => {
+        if (scale < 1) {
+          scaler.style.width = `${a4PixelWidth}px`;
+          scaler.style.height = `${a4PixelHeight * scale}px`;
+          scaler.style.transform = `scale(${scale})`;
+          scaler.style.transformOrigin = 'top center';
+        } else {
+          scaler.style.width = 'auto';
+          scaler.style.height = 'auto';
+          scaler.style.transform = 'none';
+        }
+      });
+    }
+
+    window.addEventListener('resize', scaleA4SheetsForViewport);
+
+    window.handlePrintForm = function() {
+      renderA4Preview();
+      setTimeout(() => {
+        window.print();
+      }, 150);
+    };
+
+    window.handleDownloadPDF = async function() {
+      if (!window.html2canvas || !window.jspdf) {
+        showToast('กำลังโหลดไลบรารี PDF กรุณาลองอีกครั้ง', 'info');
+        return;
+      }
+
+      setLoading(true, 'กำลังสร้างไฟล์ PDF ขนาด A4 ความละเอียดสูง...');
+      const scalers = document.querySelectorAll('.a4-scaler');
+      const prevTransforms = [];
+
+      try {
+        scalers.forEach((s) => {
+          prevTransforms.push({
+            transform: s.style.transform,
+            width: s.style.width,
+            height: s.style.height
+          });
+          s.style.transform = 'none';
+          s.style.width = 'auto';
+          s.style.height = 'auto';
+        });
+
+        const sheets = document.querySelectorAll('.a4-sheet');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        for (let i = 0; i < sheets.length; i++) {
+          const canvas = await window.html2canvas(sheets[i], {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+          });
+          const imgData = canvas.toDataURL('image/jpeg', 0.98);
+          if (i > 0) pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+        }
+
+        const fileName = `ตารางการปฏิบัติงาน_${state.profile.studentId || 'นักศึกษา'}.pdf`;
+        pdf.save(fileName);
+        showToast('ดาวน์โหลดไฟล์ PDF เรียบร้อยแล้ว', 'success');
+      } catch (err) {
+        console.error('PDF export error:', err);
+        showToast('เกิดข้อผิดพลาดในการสร้าง PDF แนะนำให้ใช้ปุ่ม พิมพ์ / บันทึก PDF', 'error');
+      } finally {
+        scalers.forEach((s, idx) => {
+          s.style.transform = prevTransforms[idx].transform;
+          s.style.width = prevTransforms[idx].width;
+          s.style.height = prevTransforms[idx].height;
+        });
+        scaleA4SheetsForViewport();
+        setLoading(false);
+      }
+    };
+
+    window.handleDownloadPNG = async function() {
+      if (!window.html2canvas) {
+        showToast('กำลังโหลดไลบรารีรูปภาพ กรุณาลองอีกครั้ง', 'info');
+        return;
+      }
+
+      setLoading(true, 'กำลังสร้างไฟล์รูปภาพ PNG...');
+      const scalers = document.querySelectorAll('.a4-scaler');
+      const prevTransforms = [];
+
+      try {
+        scalers.forEach((s) => {
+          prevTransforms.push({
+            transform: s.style.transform,
+            width: s.style.width,
+            height: s.style.height
+          });
+          s.style.transform = 'none';
+          s.style.width = 'auto';
+          s.style.height = 'auto';
+        });
+
+        const sheets = document.querySelectorAll('.a4-sheet');
+        for (let i = 0; i < sheets.length; i++) {
+          const canvas = await window.html2canvas(sheets[i], {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+          });
+          const link = document.createElement('a');
+          const pageSuffix = sheets.length > 1 ? `_หน้า${i + 1}` : '';
+          link.download = `ตารางการปฏิบัติงาน_${state.profile.studentId || 'นักศึกษา'}${pageSuffix}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }
+
+        showToast('ดาวน์โหลดรูปภาพ PNG เรียบร้อยแล้ว', 'success');
+      } catch (err) {
+        console.error('PNG export error:', err);
+        showToast('เกิดข้อผิดพลาดในการบันทึกรูปภาพ', 'error');
+      } finally {
+        scalers.forEach((s, idx) => {
+          s.style.transform = prevTransforms[idx].transform;
+          s.style.width = prevTransforms[idx].width;
+          s.style.height = prevTransforms[idx].height;
+        });
+        scaleA4SheetsForViewport();
+        setLoading(false);
+      }
+    };
+  </script>
+</body>
+</html>
